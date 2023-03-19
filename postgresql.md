@@ -478,3 +478,45 @@ select * from table_name where column_name like '%25\%%';
 select column_name from table_name where table_name ILIKE '%x%';
 ```
 
+## IS NULL or ISNULL and not Null
+
+```sql
+select * from table_name where column_name is null;
+```
+
+## 优先级NOT>AND>OR，使用括号“（）”可以改变优先级
+
+
+
+## 集合并集
+
+1. 默认union 全称是 distinct
+2. union all对重复的行也会再次展示
+
+## 集合交集
+
+1. intersect
+
+```sql
+select emp_id from excellent_emp where year = 2018
+intersect
+select emp_id from excellent_emp where year = 2019;
+```
+
+2. 和union一样intersect也有默认distinct和all
+
+## 集合差集
+
+1. except
+
+```sql
+-- 2019年获得优秀员工称号新进的员工
+select * from excellent_emp where year = 2019 
+except 
+select * from excellent_emp where year < 2019;
+```
+
+2. except和 union以及intersect一样，也有默认distinct和all之间的配置
+
+## 连表
+
