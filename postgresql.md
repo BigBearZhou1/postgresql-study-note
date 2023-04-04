@@ -488,12 +488,31 @@ select * from table_name where column_name is null;
 
 
 
-## 集合并集
+# 排序
+
+1. 在pg中null值默认是最大值，升序排在最后面
+2. 可以使用nulls first 或者nulls last来指定null值的排序
+
+# 控制查询输出的条数
+
+1. TOP-N
+   - fetch first 10 rows only
+   - limit
+   - 如果最后一个数值有多个相同的rows，**FETCH FIRST 10 ROWS WITH TIES**来抓取出来
+
+```sql
+select * from employees order by salary desc fetch first 10 rows only ;
+select * from employees order by salary limit 10 ;
+```
+
+2. 
+
+# 集合并集
 
 1. 默认union 全称是 distinct
 2. union all对重复的行也会再次展示
 
-## 集合交集
+# 集合交集
 
 1. intersect
 
@@ -505,7 +524,7 @@ select emp_id from excellent_emp where year = 2019;
 
 2. 和union一样intersect也有默认distinct和all
 
-## 集合差集
+# 集合差集
 
 1. except
 
@@ -518,5 +537,323 @@ select * from excellent_emp where year < 2019;
 
 2. except和 union以及intersect一样，也有默认distinct和all之间的配置
 
-## 连表
+# 分组
 
+## group by rollup(col1,col2)
+
+```sql
+select item,year,sum(sales)
+from employee
+group by rollup (item,year);
+
+-- rollup 相当于 group by item+year 和group by item 二合一
+```
+
+## coalesce
+
+- 对于为null的情况做的特殊处理
+
+```sql
+select coalesce(item,'所有产品') as '产品',coalesce(year,'所有年份') as '年份',sum(sales)
+from employee
+group by rollup(item,year);
+```
+
+## group by cube(col1,col2)
+
+- 字段的所有排列组合，汇总
+
+```sql
+select coalesce(item,'所有产品') as '产品',coalesce(year,'所有年份') as '年份',sum(sales)
+from employee
+group by cube(item,year);
+```
+
+## group by grouping sets 
+
+- group by rollup 和group by cube是group by grouping sets的特殊场景
+
+```sql
+group by rollup (col1,col2)相当于group by grouping sets ((col1,col2),(col1),())
+group by cube (col1,col2) 相当于group by grouping sets((col1,col2),(col2),(col1),())
+```
+
+
+
+# 连表
+
+## cross join 笛卡尔积
+
+- 九九乘法表
+
+```sql
+select concat(t1,' * ',t2,' = ',t1*t2)
+from generate_series(1,9) t1
+cross join generate_series(1,9)t2
+```
+
+## 自连接
+
+- 找出员工对应的经理
+
+```sql
+select t1.first_name ,t1.last_name ,t2.first_name ,t2.last_name 
+from employees t1
+left join employees t2
+on t1.manager_id =t2.employee_id 
+```
+
+
+
+# 数据字典
+
+## 查看表大小
+
+```sql
+select pg_size_pretty(pg_table_size('table_name'));
+```
+
+```shell
+pg_size_pretty|
+--------------|
+40 kB         |
+```
+
+## 查看索引大小
+
+```sql
+select pg_size_pretty(pg_relation_size('index_name'));
+```
+
+
+
+# 函数
+
+## 数字函数
+
+1. 随机选取10个员工
+   - 使用order by random() 函数
+
+```sql
+select first_name 
+from employees
+order by random()
+limit 10;
+```
+
+## 字符函数
+
+### 连接字符串
+
+1. concat
+
+```sql
+select concat('s','q','l');
+```
+
+2. concat_ws
+   - 用分隔符连接
+
+```sql
+select concat_ws('-','s','q','l');
+```
+
+3. ”||“连接多个字符串
+
+```SQL
+select 's'||'q'||'l';
+```
+
+### 字符串截取
+
+1. substring(string from startIndex for length)
+
+```sql
+select substring('Thomas' from 2 for 3);
+
+substring|
+---------|
+hom      |
+```
+
+2. substr(string,FROM,count)
+
+```sql
+select substr('Thomas',2,3);
+
+substr|
+------|
+hom   |
+```
+
+### 字符串替换
+
+```sql
+select replace('abcbcd','bc','xx');
+
+replace|
+-------|
+axxxxd |
+```
+
+### trim
+
+- ([leading|trailing|both] [characters] from string )
+
+- 开头|结尾|开头+结尾 去掉多余字符（默认是空格）
+
+### format
+
+- 类似java的String.format
+
+### MD5
+
+```sql
+select md5('abc');
+
+md5                             |
+--------------------------------|
+900150983cd24fb0d6963f7d28e17f72|
+```
+
+## 时间函数
+
+1. 换取当前时间
+
+   - current_date 年月日
+   - current_time 时间
+   - current_timestamp 时间戳
+
+   ```sql
+   select current_date,current_time,current_timestamp;
+   ```
+
+2. 时间运算
+
+   - 加时间段interval
+
+   ```sql 
+   select current_date + interval '7 month';
+   ```
+
+   - 时间间隔
+
+     1. age(timestamp,timestamp)
+
+        返回的是interval
+
+        ```sql
+        select age(timestamp '2020-12-3',timestamp '2020-01-01')
+        ```
+
+     2. 直接相减
+
+        ```sql
+        select current_date - date '2023-01-01'
+        ```
+
+3. 获取时间段中的信息
+
+   - date_part(text,timestamp)
+
+     ```sql
+     select date_part('year',current_date);
+     
+     select date_part('hour',timestamp '2023-02-11 03:01:00')
+     ```
+
+   - extract(field from timestamp)
+
+     extrect函数实际上也是调用date_part函数，只是语法上有不同
+
+4. date_trunc
+
+   - 截断日期/时间
+
+     date_trunc(field,source) 将timestamp、date、time或者interval数据截取到指定的精度
+
+     最后返回source的类型去掉精度的变量
+
+   ```sql
+   select date_trunc('year',timestamp '2023-03-03 11:00:00')
+   
+   select date_trunc('year',current_timestamp)
+   ```
+
+5. 创建时间make_date
+
+# 类型转换
+
+1. cast函数
+
+   CAST( expr AS date_type)
+
+2. expr :: date_type
+
+3. to_date(string, format) 
+
+4. 隐式类型转换
+
+   ```sql
+   select 1 + '2','todo: '|| current_timestamp;
+   ```
+
+   
+
+# 时序数据存储引擎 MARS2
+
+## 有序存储
+
+1. 数据按照排序键存储（稀疏索引）：如列device、ts
+2. 非排序键，采用**minmax过滤**：如列：metric_1、metric_2、comment
+
+## 列存
+
+1. 列裁剪
+2. 压缩
+3. 向量化
+
+## 数据布局
+
+1. 类似LSM Tree结构（LSM是什么？）
+
+​		磁盘顺序读写
+
+## 使用
+
+### 创建表
+
+```SQL
+create table metrics(
+	device_id varchar(32) collate "C" ENCODING(minmax), --minmax过滤
+    ts TIMESTAMP ENCODING(minmax),
+    metric_1 FLOAT4(16),
+    metric_2 INT4,
+    comment varchar(32),
+)using mars2                                            --使用mars2存储引擎
+distributed by (device_id)
+partition by range(ts);
+
+create index on metrix using mars2_btree(device_id,ts); --排序键：定义物理存储的顺序，建议将最常用的查询条件定义为排序键
+```
+
+### UniqueMode
+
+1. 解决update修改问题
+2. 语法
+
+```sql
+create index on table_name using mars2_btree(column_name) with (uniquemode=true);
+
+非json类型
+k=1 a=1   + k1 a=2 => k=1 a=2
+k=1 a=1   + k1 a=null => k=1 a=1
+```
+
+### 数据插入后analyz表
+
+### kafka可以直接如matricDB
+
+### count(*)调整为持续聚集
+
+- 持续聚集是什么？
