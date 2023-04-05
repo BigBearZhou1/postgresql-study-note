@@ -800,6 +800,50 @@ md5                             |
 
    
 
+# 子查询
+
+## 关联子查询
+
+1. 查询分为内外两层，内层的查询条件借用外层查询的结果作为入参
+2. 查询每个部门的工资总和
+
+```sql
+select d.department_name ,(select sum(salary ) from employees where department_id = d.department_id )
+from departments d
+```
+
+3. 查询每个部门中超过平均薪酬的员工
+
+```sql
+select * 
+from employees e
+where salary >(select avg(salary ) from employees where department_id = e.department_id )
+```
+
+## 横向子查询 - join lateral
+
+1. 查询每个部门的工资总和
+
+```sql
+select d.department_name ,t.sum_sal
+from departments d 
+join lateral (select sum(salary) sum_sal from employees where department_id =d.department_id ) t
+on true;
+```
+
+2. 查询每个部门工资前三的员工
+
+```sql
+select d.department_name ,e.first_name, e.salary
+from departments d 
+join lateral (select first_name,salary from employees where department_id =d.department_id order by salary desc limit 3) e
+on true ;
+```
+
+
+
+
+
 # 时序数据存储引擎 MARS2
 
 ## 有序存储
