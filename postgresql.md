@@ -603,6 +603,63 @@ left join employees t2
 on t1.manager_id =t2.employee_id 
 ```
 
+# 通用表表达式
+
+## with
+
+- with 通用表表达式，就像是在查询前定义一个变量
+- 是一个临时的查询结果或者表
+
+```sql
+with t1(n) as (select 1),t2(m) as (select n+1 from t1)
+select * from t1 cross join t2;
+```
+
+1. 样例
+
+```sql
+select department_name ,t1.avg_salary
+from departments d 
+left join (select department_id ,avg(salary) as avg_salary from employees group by department_id ) t1
+on d.department_id = t1.department_id
+```
+
+```sql
+with t1(department_id,avg_salary) as (select department_id ,avg(salary) as avg_salary from employees group by department_id)
+select d.department_name,t1.avg_salary
+from departments d
+left join t1
+on d.department_id = t1.department_id;
+```
+
+## with recursive 递归查询语句
+
+```sql
+with recursive t(n) as (
+	select 1
+	union all
+	select n+1 from t where n<10
+)
+select  * from t;
+```
+
+1. 查询公司员工的管理链路
+
+```sql
+with recursive emp_path(emp_id,emp_name,path) as (
+	select employee_id , first_name ||'.'||last_name ,first_name ||'.'||last_name
+	from employees e1
+	where manager_id is null
+	union all
+	select employee_id , first_name ||'.'||last_name ,p.path||'->'|| first_name ||'.'||last_name
+	from employees e2 
+	inner join emp_path p
+	on e2.manager_id =p.emp_id
+)
+
+select * from emp_path;
+```
+
 
 
 # 数据字典
@@ -839,6 +896,28 @@ from departments d
 join lateral (select first_name,salary from employees where department_id =d.department_id order by salary desc limit 3) e
 on true ;
 ```
+
+# EXISTS
+
+1. 查询有在2008年后入职员工的部门
+
+```sql
+select * 
+from departments d
+where exists (select * from employees where department_id = d.department_id and haira_date > '2008-01-01');
+```
+
+2. 查询没有员工的部门
+
+```sql
+select * 
+from departments d
+where not exists (select 1 from employees where department_id = d.department_id )
+```
+
+# 通用表表达式
+
+
 
 
 
